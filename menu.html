@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NEXA LIFE</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#150f3a;--pn:#241a5c;--pn2:#2f2275;--vi:#8a4dff;--cy:#27c6ff;--go:#ffc83d;--tx:#f3efff;--mu:#a99ee0}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{background:radial-gradient(120% 60% at 50% 0,#3b1e8f,var(--bg) 60%);color:var(--tx);font:600 15px/1.3 "Baloo 2","Trebuchet MS",system-ui,sans-serif;min-height:100vh;padding:env(safe-area-inset-top) 0 calc(76px + env(safe-area-inset-bottom))}
+header{display:flex;gap:8px;align-items:center;padding:10px 12px}
+.av{width:46px;height:46px;border-radius:14px;background:var(--pn2);display:grid;place-items:center;font-size:26px;border:2px solid var(--cy)}
+.who{flex:1}.who b{display:block}.bar{height:8px;background:#0006;border-radius:9px;overflow:hidden;margin-top:4px}.bar i{display:block;height:100%;background:linear-gradient(90deg,#3ddc84,var(--cy))}
+.chip{background:var(--pn);padding:6px 10px;border-radius:12px;white-space:nowrap}
+main{padding:0 12px}
+.card{background:var(--pn);border-radius:18px;padding:12px;margin-bottom:12px;border:1px solid #ffffff14}
+button{font:inherit;color:#fff;border:0;border-radius:14px;padding:10px 14px;background:linear-gradient(#9b63ff,var(--vi));box-shadow:0 4px 0 #4b25a8}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #4b25a8}button:disabled{opacity:.45}button:focus-visible{outline:3px solid var(--cy)}
+.gold{background:linear-gradient(#ffd85c,var(--go));color:#4a3300;box-shadow:0 4px 0 #b98800}
+.map{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;background:#3b8f4e;padding:6px;border-radius:16px;aspect-ratio:1}
+.cell{background:#58b36a;border-radius:6px;display:grid;place-items:center;font-size:clamp(16px,5vw,26px);border:0;padding:0;box-shadow:none;color:inherit}
+.cell:nth-child(odd){background:#4fa861}
+.pick{display:flex;gap:6px;overflow-x:auto;padding:8px 0}.pick button{flex:none;background:var(--pn2);box-shadow:0 3px 0 #120b3a;font-size:13px}.pick .on{outline:3px solid var(--go)}
+.row{display:flex;align-items:center;gap:10px;padding:8px 0}.row .g{flex:1}.row small{color:var(--mu);display:block}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0f0a2ae6;backdrop-filter:blur(8px);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;background:none;box-shadow:none;font-size:22px;padding:6px}nav button small{display:block;font-size:11px;color:var(--mu)}nav .on small{color:var(--go)}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#000c;padding:8px 14px;border-radius:12px;opacity:0;transition:.2s;pointer-events:none}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<header><div class="av" id="av">🧑</div><div class="who"><b id="nm">NexaPlayer</b><span id="lv"></span><div class="bar"><i id="xp"></i></div></div>
+<div class="chip">🪙 <span id="co"></span></div><div class="chip">💎 <span id="ge"></span></div></header>
+<main id="v"></main><div id="toast"></div>
+<nav id="nav"></nav>
+<script>
+const tg=(parent.Telegram||Telegram).WebApp;tg.ready();tg.expand();tg.setHeaderColor('#150f3a');tg.setBackgroundColor('#150f3a');
+let S,tab='city',sel='house';
+const ICON={house:'🏠',apartment:'🏢',shop:'🏪',bank:'🏦',hospital:'🏥',club:'🪩',tree:'🌳',fountain:'⛲'};
+const SKIN={base:'🧑',crown:'👑',neko:'🐱',cool:'😎'};
+const $=s=>document.querySelector(s);
+function toast(t){const e=$('#toast');e.textContent=t;e.style.opacity=1;setTimeout(()=>e.style.opacity=0,1800)}
+async function api(p,b){try{const r=await fetch('/api/'+p,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-init-data':tg.initData},body:b?JSON.stringify(b):undefined});const j=await r.json();if(!r.ok)throw new Error(j.error);return j}catch(e){toast(e.message);tg.HapticFeedback?.notificationOccurred('error')}}
+async function act(p,b){const j=await api(p,b);if(j){S=j;tg.HapticFeedback?.impactOccurred('light');draw()}}
+const TABS=[['city','🏙️','Ville'],['shop','🛒','Boutique'],['quests','📜','Quêtes'],['me','👤','Profil']];
+function draw(){
+  $('#nm').textContent=S.name;$('#lv').textContent=' Niveau '+S.level+' · '+S.xp+' / '+S.need;$('#xp').style.width=S.xp/S.need*100+'%';
+  $('#co').textContent=S.coins;$('#ge').textContent=S.gems;$('#av').textContent=SKIN[S.skin];
+  $('#nav').innerHTML=TABS.map(([k,i,l])=>`<button class="${k==tab?'on':''}" onclick="tab='${k}';draw()">${i}<small>${l}</small></button>`).join('');
+  const B=S.catalog.buildings,v=$('#v');
+  if(tab=='city'){
+    const g={};S.buildings.forEach(b=>g[b.x+','+b.y]=b.type);let c='';
+    for(let y=0;y<8;y++)for(let x=0;x<8;x++)c+=`<button class="cell" aria-label="Case ${x+1},${y+1}" onclick="act('build',{type:sel,x:${x},y:${y}})">${ICON[g[x+','+y]]||''}</button>`;
+    v.innerHTML=`<div class="map">${c}</div><div class="pick">${Object.entries(B).map(([k,b])=>`<button class="${k==sel?'on':''}" onclick="sel='${k}';draw()">${ICON[k]} ${b.n}<br>🪙${b.c}</button>`).join('')}</div>
+    <button class="gold" onclick="act('daily',{})">🎁 Récompense du jour</button>`;
+  }
+  if(tab=='shop')v.innerHTML=`<div class="card"><b>Skins</b>`+Object.entries(S.catalog.skins).map(([k,s])=>{const own=S.skins.includes(k);return`<div class="row"><div class="av">${SKIN[k]}</div><div class="g">${s.n}<small>${own?(S.skin==k?'Équipé':'Possédé'):'💎 '+s.g}</small></div>
+    <button ${S.skin==k?'disabled':''} onclick="act('${own?'skin':'shop/buy'}',{id:'${k}'})">${own?'Équiper':'Acheter'}</button></div>`}).join('')+`</div>`;
+  if(tab=='quests')v.innerHTML=`<div class="card">`+Object.entries(S.catalog.quests).map(([k,q])=>{const n=S.quests[k]||0,d=S.claimed.includes(k);return`<div class="row"><div class="g">${q.n}<small>${n} / ${q.goal} · 🪙${q.coins}${q.gems?' 💎'+q.gems:''}</small><div class="bar"><i style="width:${n/q.goal*100}%"></i></div></div>
+    <button class="gold" ${n<q.goal||d?'disabled':''} onclick="act('quest/claim',{id:'${k}'})">${d?'Reçu':'Récompenses'}</button></div>`}).join('')+`</div>
+    <button onclick="act('chat',{});tg.openTelegramLink?.('https://t.me/share/url?url='+encodeURIComponent(location.origin))">💬 Inviter un ami</button>`;
+  if(tab=='me'){v.innerHTML=`<div class="card"><b>Classement</b><div id="lb"></div></div>`;api('leaderboard').then(l=>$('#lb').innerHTML=(l||[]).map((p,i)=>`<div class="row"><span>${i+1}</span><span>${SKIN[p.skin]}</span><div class="g">${p.name}</div><span>Niv. ${p.level}</span></div>`).join(''))}
+}
+api('me').then(j=>{if(j){S=j;draw()}});
+</script></body></html>
